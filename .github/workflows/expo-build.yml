@@ -1,0 +1,49 @@
+name: Expo Build and Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Login to EAS
+        run: eas login --token ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build and Publish to Expo
+        run: eas build --platform all --non-interactive
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Add Build URL to Release Notes
+        run: |
+          BUILD_URL=$(eas build:list --json | jq -r ".[0].url")
+          echo "### Expo Build URL:" >> $GITHUB_STEP_SUMMARY
+          echo "${BUILD_URL}" >> $GITHUB_STEP_SUMMARY
+
+
